@@ -75,3 +75,15 @@ for repo in repos:
 print(f"\nUser {user.login} has access to the following repositories:")
 for repo_name, permission in user_repos:
     print(f" - {repo_name}: {permission}")
+
+
+# Downgrade permissions to "pull" for each repository
+for repo_name, permission in user_repos:
+    if permission != "pull":
+        try:
+            repo = org.get_repo(repo_name) # Get the repository object
+            repo.remove_from_collaborators(user) # Remove the user from collaborators
+            repo.add_to_collaborators(user, "pull") # Add the user with "pull" permission
+            print(f"Downgraded {user.login}'s permission in {repo_name} to 'pull'.")
+        except Exception as e:
+            print(f"Error downgrading permission for {repo_name}: {e}")
