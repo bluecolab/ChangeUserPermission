@@ -36,8 +36,25 @@ ORG_NAME = os.getenv("GH_Org")
 g = Github(TOKEN)
 org = g.get_organization(ORG_NAME)
 
+# Print List of users in the organization
+print(f"Users in the organization {ORG_NAME}:") 
+for member in org.get_members():
+    if member.login == g.get_user().login:
+        print(f" - {member.login} (You)")
+    else:
+        print(f" - {member.login}")
+
+
+
 # Get the username to modify
 username= input("Enter the username to modify:".strip())
+
+if not username:
+    print("Username cannot be empty. Exiting.")
+    exit(1)
+if username not in [member.login for member in org.get_members()]:
+    print(f"User {username} not found in the organization {ORG_NAME}. Exiting.")
+    exit(1)
 
 # Get the user object
 user = g.get_user(username)
