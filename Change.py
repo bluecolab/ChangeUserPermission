@@ -1,28 +1,3 @@
-"""
-📜 Script: Change.py
-
-🎯 Purpose:
-    - This script allows an admin to audit and modify a user's repository permissions within a GitHub organization.
-    - Specifically, it lists all repos where the user has access and downgrades their permissions to read-only ("pull").
-
-🔧 Input:
-    - GitHub username (entered interactively)
-    - GitHub access token stored in a `.env` file (GH_TOKEN)
-    - Organization  stored in a `.env` file  (ORG_NAME)
-
-📤 Output:
-    - Console log showing:
-        • Repos the user has access to
-        • Their current permission level
-        • Confirmation of permission downgrade to "pull"
-        • Final verification of updated access
-
-📝 Notes:
-    - Requires `PyGithub` and `python-dotenv`
-    - Token must have: `admin:org`, `repo`, `read:org` scopes
-    - Must be run by a user with admin rights in the organization
-"""
-
 from github import Github
 from dotenv import load_dotenv
 import os
