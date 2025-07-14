@@ -11,9 +11,19 @@ ORG_NAME = os.getenv("GH_Org")
 g = Github(TOKEN)
 org = g.get_organization(ORG_NAME)
 
-# Print List of users in the organization
+""" 
+# Print List of users in the organization (optional)
 print(f"Users in the organization {ORG_NAME}:") 
 for member in org.get_members():
+    if member.login == g.get_user().login:
+        print(f" - {member.login} (You)")
+    else:
+        print(f" - {member.login}")
+ """
+
+# Print List of outside collaborators in the organization
+print(f"Outside collaborators in {ORG_NAME}:")
+for member in org.get_outside_collaborators():
     if member.login == g.get_user().login:
         print(f" - {member.login} (You)")
     else:
@@ -52,6 +62,12 @@ for repo_name, permission in user_repos:
     print(f" - {repo_name}: {permission}")
 
 
+print(f" Would you like to downgrade {user.login}'s permissions to 'pull' in all repositories? (yes/no)")
+if input().strip().lower() != "yes":
+    print("Exiting without changes.")
+    exit(0)
+
+
 # Downgrade permissions to "pull" for each repository
 for repo_name, permission in user_repos:
     if permission != "pull":
@@ -62,3 +78,9 @@ for repo_name, permission in user_repos:
             print(f"Downgraded {user.login}'s permission in {repo_name} to 'pull'.")
         except Exception as e:
             print(f"Error downgrading permission for {repo_name}: {e}")
+
+
+
+
+# Only the ppl outside collaborators should be the oner reading. no one else 
+#  and then change it to read 
