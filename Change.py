@@ -2,7 +2,7 @@ from github import Github
 from dotenv import load_dotenv
 import os
 
-# Make sure to have the right tokesn and repository name
+# Load environment variables
 load_dotenv()
 TOKEN = os.getenv("GH_Token")
 ORG_NAME = os.getenv("GH_Org")
@@ -11,76 +11,59 @@ ORG_NAME = os.getenv("GH_Org")
 g = Github(TOKEN)
 org = g.get_organization(ORG_NAME)
 
-""" 
-# Print List of users in the organization (optional)
-print(f"Users in the organization {ORG_NAME}:") 
-for member in org.get_members():
-    if member.login == g.get_user().login:
-        print(f" - {member.login} (You)")
-    else:
-        print(f" - {member.login}")
- """
+# List outside collaborators
+outside_collabs = list(org.get_outside_collaborators())
 
-# Print List of outside collaborators in the organization
 print(f"Outside collaborators in {ORG_NAME}:")
-for member in org.get_outside_collaborators():
+for member in outside_collabs:
     if member.login == g.get_user().login:
         print(f" - {member.login} (You)")
     else:
         print(f" - {member.login}")
 
-
-
-# Get the username to modify
-username= input("Enter the username to modify:".strip())
+# Ask for username
+username = input("\nEnter the username to modify: ").strip()
 
 if not username:
     print("Username cannot be empty. Exiting.")
     exit(1)
-if username not in [member.login for member in org.get_members()]:
-    print(f"User {username} not found in the organization {ORG_NAME}. Exiting.")
+
+if username not in [member.login for member in outside_collabs]:
+    print(f"User {username} is not an outside collaborator in {ORG_NAME}. Exiting.")
     exit(1)
 
-# Get the user object
+# Get user object
 user = g.get_user(username)
-print(f" Finding repos for user: {user.login}")
+print(f"Finding repos for outside collaborator: {user.login}")
 
-# List all repositories where the user has access
+# Get repos and check their permissions
 repos = org.get_repos()
 user_repos = []
 for repo in repos:
     try:
         permission = repo.get_collaborator_permission(user)
         if permission != "none":
-            user_repos.append((repo.name, permission))
+            user_repos.append((repo, permission))
     except Exception as e:
-        print(f"Error accessing repo {repo.name}: {e}")
+        print(f"Error checking {repo.name}: {e}")
 
-# Display the user's current repository
+# Show current permissions
 print(f"\nUser {user.login} has access to the following repositories:")
-for repo_name, permission in user_repos:
-    print(f" - {repo_name}: {permission}")
+for repo, permission in user_repos:
+    print(f" - {repo.name}: {permission}")
 
-
-print(f" Would you like to downgrade {user.login}'s permissions to 'pull' in all repositories? (yes/no)")
-if input().strip().lower() != "yes":
+# Confirm
+confirm = input(f"\nWould you like to downgrade {user.login}'s permissions to 'pull' in all repositories? (yes/no): ").strip().lower()
+if confirm.lower() != "yes" and confirm.lower() != "y":
     print("Exiting without changes.")
     exit(0)
 
-
-# Downgrade permissions to "pull" for each repository
-for repo_name, permission in user_repos:
+# Perform downgrade
+for repo, permission in user_repos:
     if permission != "pull":
         try:
-            repo = org.get_repo(repo_name) # Get the repository object
-            repo.remove_from_collaborators(user) # Remove the user from collaborators
-            repo.add_to_collaborators(user, "pull") # Add the user with "pull" permission
-            print(f"Downgraded {user.login}'s permission in {repo_name} to 'pull'.")
+            repo.remove_from_collaborators(user)
+            repo.add_to_collaborators(user, permission="pull")
+            print(f"✅ Downgraded {user.login}'s permission in {repo.name} to 'pull'")
         except Exception as e:
-            print(f"Error downgrading permission for {repo_name}: {e}")
-
-
-
-
-# Only the ppl outside collaborators should be the oner reading. no one else 
-#  and then change it to read 
+            print(f"❌ Failed to downgrade {repo.name}: {e}")
