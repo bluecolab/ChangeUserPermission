@@ -11,9 +11,11 @@ ORG_NAME = os.getenv("GH_Org")
 g = Github(TOKEN)
 org = g.get_organization(ORG_NAME)
 
-# List outside collaborators
+# get member and repo lists from GitHub
 outside_collabs = list(org.get_outside_collaborators())
+repos = org.get_repos()
 
+# List outside collaborators
 print(f"Outside collaborators in {ORG_NAME}:")
 for member in outside_collabs:
     if member.login == g.get_user().login:
@@ -21,49 +23,51 @@ for member in outside_collabs:
     else:
         print(f" - {member.login}")
 
-# Ask for username
-username = input("\nEnter the username to modify: ").strip()
+while True: 
+    # just loop this forever until Ctrl-C quits
 
-if not username:
-    print("Username cannot be empty. Exiting.")
-    exit(1)
+    # Ask for username
+    username = input("\nEnter the username to modify: ").strip()
 
-if username not in [member.login for member in outside_collabs]:
-    print(f"User {username} is not an outside collaborator in {ORG_NAME}. Exiting.")
-    exit(1)
+    if not username:
+        print("Username cannot be empty.")
+        continue
 
-# Get user object
-user = g.get_user(username)
-print(f"Finding repos for outside collaborator: {user.login}")
+    if username not in [member.login for member in outside_collabs]:
+        print(f"User {username} is not an outside collaborator in {ORG_NAME}.")
+        continue
 
-# Get repos and check their permissions
-repos = org.get_repos()
-user_repos = []
-for repo in repos:
-    try:
-        permission = repo.get_collaborator_permission(user)
-        if permission != "none":
-            user_repos.append((repo, permission))
-    except Exception as e:
-        print(f"Error checking {repo.name}: {e}")
+    # Get user object
+    user = g.get_user(username)
+    print(f"Finding repos for outside collaborator: {user.login}")
 
-# Show current permissions
-print(f"\nUser {user.login} has access to the following repositories:")
-for repo, permission in user_repos:
-    print(f" - {repo.name}: {permission}")
-
-# Confirm
-confirm = input(f"\nWould you like to downgrade {user.login}'s permissions to 'pull' in all repositories? (yes/no): ").strip().lower()
-if confirm.lower() != "yes" and confirm.lower() != "y":
-    print("Exiting without changes.")
-    exit(0)
-
-# Perform downgrade
-for repo, permission in user_repos:
-    if permission != "pull":
+    # Get repos and check their permissions
+    user_repos = []
+    for repo in repos:
         try:
-            repo.remove_from_collaborators(user)
-            repo.add_to_collaborators(user, permission="pull")
-            print(f"✅ Downgraded {user.login}'s permission in {repo.name} to 'pull'")
+            permission = repo.get_collaborator_permission(user)
+            if permission != "none":
+                user_repos.append((repo, permission))
         except Exception as e:
-            print(f"❌ Failed to downgrade {repo.name}: {e}")
+            print(f"Error checking {repo.name}: {e}")
+
+    # Show current permissions
+    print(f"\nUser {user.login} has access to the following repositories:")
+    for repo, permission in user_repos:
+        print(f" - {repo.name}: {permission}")
+
+    # Confirm
+    confirm = input(f"\nWould you like to downgrade {user.login}'s permissions to 'read' in all repositories? (yes/no): ").strip().lower()
+    if confirm.lower() != "yes" and confirm.lower() != "y":
+        print("Exiting without changes.")
+        exit(0)
+
+    # Perform downgrade
+    for repo, permission in user_repos:
+        if permission != "read":
+            try:
+                repo.remove_from_collaborators(user)
+                repo.add_to_collaborators(user, permission="read")
+                print(f"✅ Downgraded {user.login}'s permission in {repo.name} to 'read'")
+            except Exception as e:
+                print(f"❌ Failed to downgrade {repo.name}: {e}")
