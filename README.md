@@ -7,7 +7,14 @@ Your Profile -> Settings -> Developer Settings (Last option) -> Fine Grained Tok
 
 Remember to configure to only affect the right organization
 
-PS: This token can only be seen once so if u close the tab u will have to generate a new one
+Required Token Permissions
+
+| Org permission | Repo permission |
+| --- | --- |
+| **Read** and **Write** to members | **Read** to metadata |
+| **Read** and **Write** to organization administration | **Read** and **Write** to administration |
+
+PS: This token can only be seen once so if you close the tab you will have to generate a new one
 
 
 
