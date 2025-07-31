@@ -42,28 +42,32 @@ while True:
     print(f"Finding repos for outside collaborator: {user.login}")
 
     # Get repos and check their permissions
-    user_repos = []
+    user_repos_read = []
+    user_repos_notread = []
     for repo in repos:
         try:
             permission = repo.get_collaborator_permission(user)
-            if permission != "none":
-                user_repos.append((repo, permission))
+            if permission == "read":
+                user_repos_read.append((repo, permission))
+            elif permission != "none":
+                user_repos_notread.append((repo, permission))
         except Exception as e:
             print(f"Error checking {repo.name}: {e}")
 
     # Show current permissions
     print(f"\nUser {user.login} has access to the following repositories:")
-    for repo, permission in user_repos:
-        print(f" - {repo.name}: {permission}")
+    for repo, permission in user_repos_read + user_repos_notread:
+        print(f" - {repo.name}: {permission} {'(archived)' if repo.archived else ''}")
 
     # Confirm
     confirm = input(f"\nWould you like to downgrade {user.login}'s permissions to 'read' in all repositories? (yes/no): ").strip().lower()
     if confirm.lower() != "yes" and confirm.lower() != "y":
-        print("Exiting without changes.")
-        exit(0)
+        # print("Exiting without changes.")
+        # exit(0)
+        continue
 
     # Perform downgrade
-    for repo, permission in user_repos:
+    for repo, permission in user_repos_notread:
         if permission != "read":
             try:
                 repo.remove_from_collaborators(user)
