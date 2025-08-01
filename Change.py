@@ -4,12 +4,6 @@ import os
 
 # init global vars
 env = {}
-globals = {
-    'github_connection': None,
-    'github_org': None,
-    'outside_collabs': [],
-    'repos': []
-}
 
 # define functions
 def load_env_vars() -> None:
@@ -17,16 +11,20 @@ def load_env_vars() -> None:
     load_dotenv()
     env['TOKEN'] = os.getenv("GH_Token")
     env['ORG_NAME'] = os.getenv("GH_Org")
+    # the previous list of outside collaborators
+    env['OC_LOG'] = os.getenv("Out_Collab_Log_File")
 
 def connect():        
     # Connect to GitHub
-    globals['github_connection'] = Github(env['TOKEN'])
-    globals['github_org'] = globals['github_connection'].get_organization(env['ORG_NAME'])
+    github_connection = Github(env['TOKEN'])
+    github_org = github_connection.get_organization(env['ORG_NAME'])
+    return github_connection, github_org
 
-def get_members_repos_lists():
+def get_members_repos_lists(org):
     # get member and repo lists from GitHub
-    globals['outside_collabs'] = list(globals['github_org'].get_outside_collaborators())
-    globals['repos'] = globals['github_org'].get_repos()
+    outside_collabs = list(org.get_outside_collaborators())
+    repos = org.get_repos()
+    return outside_collabs, repos
 
 def read_write_out_collab_log(file_path:str, mode:str='r', new_list:list=[]) -> list:
     # read or write to the outside collaborator log
@@ -43,34 +41,34 @@ def read_write_out_collab_log(file_path:str, mode:str='r', new_list:list=[]) -> 
     # return the final list, or [True], or an empty list, depending on what was done
     return response
 
-def list_out_collabs():
+def list_out_collabs(connection, oc, prev_oc):
     # List outside collaborators
     print(f"Outside collaborators in {env['ORG_NAME']}:")
-    for member in globals['outside_collabs']:
-        if member.login == globals['github_connection'].get_user().login:
+    for member in oc:
+        if member.login == connection.get_user().login:
             print(f" - {member.login} (You)")
         else:
             print(f" - {member.login}")
 
-def get_user(username:str):
+def get_user(connection, oc, username:str):
     # try to find th given username
     if not username:
         print("Username cannot be empty.")
         manage_permissions()
 
-    if username not in [member.login for member in globals['outside_collabs']]:
+    if username not in [member.login for member in oc]:
         print(f"User {username} is not an outside collaborator in {env['ORG_NAME']}.")
         manage_permissions()
 
     # Get user object
-    return globals['github_connection'].get_user(username)
+    return connection.get_user(username)
 
-def get_user_repos(user):
+def get_user_repos(user, repos):
     print(f"Finding repos for outside collaborator: {user.login}\n(this may take a minute)")
     # Get repos and check their permissions
     user_repos_read = []
     user_repos_notread = []
-    for repo in globals['repos']:
+    for repo in repos:
         try:
             permission = repo.get_collaborator_permission(user)
             if permission == "read":
@@ -95,13 +93,13 @@ def downgrade_permissions(user, user_repos_notread:list):
     print("Finished.")
     
 
-def manage_permissions():
+def manage_permissions(connection, oc, repos):
     # Ask for username
     username = input("\nEnter the username to modify, or 'exit' to exit: ").strip()
     if username=="exit":
         exit(0)
-    user = get_user(username)
-    read, notread = get_user_repos(user)
+    user = get_user(connection, oc, username)
+    read, notread = get_user_repos(user, repos)
 
     # Show current permissions
     print(f"\nUser {user.login} has access to the following repositories:")
@@ -112,19 +110,22 @@ def manage_permissions():
     confirm = input(f"\nWould you like to downgrade {user.login}'s permissions to 'read' in all repositories? (yes/no): ").strip().lower()
     if confirm.lower() != "yes" and confirm.lower() != "y":
         print("No changes were made.")
-        manage_permissions()
+        manage_permissions(connection, oc, repos)
     else:
         downgrade_permissions(user, notread)
 
 
 def main():
+    # setup
     load_env_vars()
-    connect()
-    get_members_repos_lists()
-    list_out_collabs()
+    connection, org = connect()
+    oc, repos = get_members_repos_lists(org)
+    # read previous outside collabs list
+    prev_oc = read_write_out_collab_log(env['OC_LOG'])
+    list_out_collabs(connection, oc, prev_oc)
     while True:
         # loop forever until user exits
-        manage_permissions()
+        manage_permissions(connection, oc, repos)
 
 
 if __name__ == "__main__":
