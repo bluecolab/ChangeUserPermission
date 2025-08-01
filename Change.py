@@ -36,19 +36,34 @@ def read_write_out_collab_log(file_path:str, mode:str='r', new_list:list=[]) -> 
             response = file.read()
         elif mode == 'w' or mode == 'a':
             # overwrite or append the new list, return true
-            file.write('\n'.join(new_list))
+            file.write('\n'.join(map(lambda u:u.login ,new_list)))
             response = [True]
     # return the final list, or [True], or an empty list, depending on what was done
     return response
 
 def list_out_collabs(connection, oc, prev_oc):
+    request = input("Enter \"new\" to list only new outside collaborators, or any key to list all outside collaborators: ").strip()
     # List outside collaborators
-    print(f"Outside collaborators in {env['ORG_NAME']}:")
-    for member in oc:
-        if member.login == connection.get_user().login:
-            print(f" - {member.login} (You)")
-        else:
-            print(f" - {member.login}")
+    if request == "new":
+        print(f"New outside collaborators in {env['ORG_NAME']}:")
+        new_oc = [member for member in oc if member.login not in prev_oc]
+        for member in new_oc:
+            if member.login == connection.get_user().login:
+                print(f" - {member.login} (You)")
+            else:
+                print(f" - {member.login}")
+        # save new collaborators?
+        save = input("\nAdd new outside collaborators to logged list (yes/no)? ")
+        if save == "yes" or save == "y":
+            read_write_out_collab_log(env["OC_LOG"], 'a', new_oc)
+            print("The new collaborators have been appended to the logged list.")
+    else:
+        print(f"Outside collaborators in {env['ORG_NAME']}:")
+        for member in oc:
+            if member.login == connection.get_user().login:
+                print(f" - {member.login} (You)")
+            else:
+                print(f" - {member.login}")
 
 def get_user(connection, oc, username:str):
     # try to find th given username
@@ -113,7 +128,6 @@ def manage_permissions(connection, oc, repos):
         manage_permissions(connection, oc, repos)
     else:
         downgrade_permissions(user, notread)
-
 
 def main():
     # setup
