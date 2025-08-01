@@ -52,10 +52,8 @@ def list_out_collabs():
         else:
             print(f" - {member.login}")
 
-def get_user():
-    # Ask for username
-    username = input("\nEnter the username to modify: ").strip()
-
+def get_user(username:str):
+    # try to find th given username
     if not username:
         print("Username cannot be empty.")
         manage_permissions()
@@ -98,7 +96,11 @@ def downgrade_permissions(user, user_repos_notread:list):
     
 
 def manage_permissions():
-    user = get_user()
+    # Ask for username
+    username = input("\nEnter the username to modify, or 'exit' to exit: ").strip()
+    if username=="exit":
+        exit(0)
+    user = get_user(username)
     read, notread = get_user_repos(user)
 
     # Show current permissions
@@ -109,8 +111,7 @@ def manage_permissions():
     # Confirm
     confirm = input(f"\nWould you like to downgrade {user.login}'s permissions to 'read' in all repositories? (yes/no): ").strip().lower()
     if confirm.lower() != "yes" and confirm.lower() != "y":
-        # print("Exiting without changes.")
-        # exit(0)
+        print("No changes were made.")
         manage_permissions()
     else:
         downgrade_permissions(user, notread)
