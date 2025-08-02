@@ -15,13 +15,3 @@ Required Token Permissions
 | **Read** and **Write** to organization administration | **Read** and **Write** to administration |
 
 PS: This token can only be seen once so if you close the tab you will have to generate a new one
-
-
-
-
-
-
-.env file example : 
-
-    GH_Token= {TOKEN}
-    GH_Org= {ORG_NAME}
