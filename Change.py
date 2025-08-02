@@ -1,6 +1,7 @@
 from github import Github
 from dotenv import load_dotenv
 import os
+import logging
 
 # init global vars
 env = {}
@@ -13,6 +14,7 @@ def load_env_vars() -> None:
     env['ORG_NAME'] = os.getenv("GH_Org")
     # the previous list of outside collaborators
     env['OC_LOG'] = os.getenv("Out_Collab_Log_File")
+    env['LOG'] = os.getenv("Permission_Change_Log_File")
 
 def connect():        
     # Connect to GitHub
@@ -37,6 +39,7 @@ def read_write_out_collab_log(file_path:str, mode:str='r', new_list:list=[]) -> 
         elif mode == 'w' or mode == 'a':
             # overwrite or append the new list, return true
             file.write('\n' + '\n'.join(map(lambda u:u.login ,new_list)))
+            logging.info("New collaborators added to log list")
             response = [True]
     # return the final list, or [True], or an empty list, depending on what was done
     return response
@@ -50,15 +53,18 @@ def list_out_all_collabs(connection, oc):
             print(f" - {member.login}")
 
 def list_out_new_collabs(connection, oc, prev_oc) -> list:
-    print(f"New outside collaborators in {env['ORG_NAME']}:")
     new_oc = [member for member in oc if member.login not in prev_oc]
+    if len(new_oc) == 0:
+        print("No new outside collaborators found.")
+        return []
+    print(f"New outside collaborators in {env['ORG_NAME']}:")
     for member in new_oc:
         if member.login == connection.get_user().login:
             print(f" - {member.login} (You)")
         else:
             print(f" - {member.login}")
     # save new collaborators?
-    save = input("\nAdd new outside collaborators to logged list (yes/no)? ")
+    save = input("\nAdd new outside collaborators to logged list (yes/no)? ").strip().lower()
     if save == "yes" or save == "y":
         read_write_out_collab_log(env["OC_LOG"], 'a', new_oc)
         print("The new collaborators have been appended to the logged list.")
@@ -68,9 +74,11 @@ def get_user(connection, oc, username:str):
     # try to find th given username
     if not username:
         print("Username cannot be empty.")
+        return
 
     if username not in [member.login for member in oc]:
         print(f"User {username} is not an outside collaborator in {env['ORG_NAME']}.")
+        return
 
     # Get user object
     return connection.get_user(username)
@@ -108,6 +116,10 @@ def print_user_permissions(user, user_repos, show_archived:bool=True):
             print(f" - {repo.name}: {permission}")
     print()
 
+def downgrade_all(full_list):
+    for user, repo in full_list:
+        downgrade_permissions(user, repo)
+
 def downgrade_permissions(user, user_repos_notread:list):
     # Perform downgrade
     for repo, permission in user_repos_notread:
@@ -115,20 +127,21 @@ def downgrade_permissions(user, user_repos_notread:list):
             try:
                 repo.remove_from_collaborators(user)
                 repo.add_to_collaborators(user, permission="read")
-                print(f"✅ Downgraded {user.login}'s permission in {repo.name} to 'read'")
+                logging.info(f"✅ Downgraded {user.login}'s permission in {repo.name} to 'read'")
             except Exception as e:
-                print(f"❌ Failed to downgrade {repo.name}: {e}")
-    print("Finished.")
+                logging.error(f"❌ Failed to downgrade {repo.name}: {e}")
   
-def check_list_permissions(connection, oc, repos, users_list):
+def check_list_permissions(repos, users_list):
     # print(f"Checking permissions for {user.login}")
     print("Checking permissions on those users. This may take awhile.\n")
+    full_list = []
     for user in users_list:
         # get only repos with non-read permissions
         nonread = get_user_repos(user, repos, include_read=False, include_archived=False)
         print_user_permissions(user, nonread, show_archived=False)
-        
-    
+        if len(nonread) > 0:
+            full_list.append((user, nonread))
+    return full_list
 
 def manage_permissions(connection, oc, repos, prev_oc):
     # Ask for username
@@ -151,25 +164,43 @@ def manage_permissions(connection, oc, repos, prev_oc):
     
     # if users is not on the logged list of outside collaborators, ask if they should be added
     if user.login not in prev_oc:
-        log_user = input(f"Add this user to the logged list (yes/no)? ").strip()
+        log_user = input(f"Add this user to the logged list (yes/no)? ").strip().lower()
         if log_user.lower() == "yes" or log_user.lower() == 'y':
             read_write_out_collab_log(env["OC_LOG"], 'a', [user])
 
 def main():
     # setup
     load_env_vars()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="{asctime} - {levelname} - {message}",
+        style="{",
+        datefmt="%Y-%m-%d %H:%M",
+        filename=env["LOG"],
+        encoding="utf-8",
+        filemode="a"
+    )
     connection, org = connect()
     oc, repos = get_members_repos_lists(org)
     # read previous outside collabs list
     prev_oc = read_write_out_collab_log(env['OC_LOG'])
-    request = input("Enter \"new\" to list only new outside collaborators, or any key to list all outside collaborators: ").strip()
+    request = input("Enter \"new\" to list only new outside collaborators, or blank to list all outside collaborators: ").strip().lower()
     # List outside collaborators
     if request == "new":
         new_oc = list_out_new_collabs(connection, oc, prev_oc)
+        if len(new_oc) == 0:
+            return
         # check for non-read permissions
-        check = input("Check all new outside collaborators for non-read permissions on unarchived repos (yes/no)? ").strip()
+        check = input("Check all new outside collaborators for non-read permissions on unarchived repos (yes/no)? ").strip().lower()
         if check == "yes" or check == "y":
-            check_list_permissions(connection, oc, repos, new_oc)
+            full_list = check_list_permissions(repos, new_oc)
+            if len(full_list) == 0:
+                print("No users found with non-read permissions.")
+                return
+            downgrade = input("Downgrade all non-read permissions found (yes/no)? ").strip().lower()
+            if downgrade == "yes" or downgrade == "y":
+                downgrade_all(full_list)
+
     else:
         list_out_all_collabs(connection, oc)
         # user will handle updates manually
