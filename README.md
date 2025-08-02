@@ -22,6 +22,6 @@ PS: This token can only be seen once so if you close the tab you will have to ge
 
 
 .env file example : 
-    GH_Token= {TOKEN}
 
+    GH_Token= {TOKEN}
     GH_Org= {ORG_NAME}
