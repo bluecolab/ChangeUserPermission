@@ -130,7 +130,7 @@ def check_list_permissions(connection, oc, repos, users_list):
         
     
 
-def manage_permissions(connection, oc, repos):
+def manage_permissions(connection, oc, repos, prev_oc):
     # Ask for username
     username = input("\nEnter the username to modify, or 'exit' to exit: ").strip()
     if username=="exit":
@@ -144,10 +144,16 @@ def manage_permissions(connection, oc, repos):
     confirm = input(f"\nWould you like to downgrade {user.login}'s permissions to 'read' in all repositories? (yes/no): ").strip().lower()
     if confirm.lower() != "yes" and confirm.lower() != "y":
         print("No changes were made.")
-        manage_permissions(connection, oc, repos)
+        return
     else:
         print("Working on it. This may take a minute.")
         downgrade_permissions(user, notread)
+    
+    # if users is not on the logged list of outside collaborators, ask if they should be added
+    if user.login not in prev_oc:
+        log_user = input(f"Add this user to the logged list (yes/no)? ").strip()
+        if log_user.lower() == "yes" or log_user.lower() == 'y':
+            read_write_out_collab_log(env["OC_LOG"], 'a', [user])
 
 def main():
     # setup
@@ -169,7 +175,7 @@ def main():
         # user will handle updates manually
     while True:
         # loop forever until user exits
-        manage_permissions(connection, oc, repos)
+        manage_permissions(connection, oc, repos, prev_oc)
 
 
 if __name__ == "__main__":
