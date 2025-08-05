@@ -47,10 +47,10 @@ def read_write_out_collab_log(file_path:str, mode:str='r', new_list:list=[]) -> 
 def list_out_all_collabs(connection, oc):
     print(f"Outside collaborators in {env['ORG_NAME']}:")
     for member in oc:
-        if member.login == connection.get_user().login:
-            print(f" - {member.login} (You)")
-        else:
-            print(f" - {member.login}")
+        # if member.login == connection.get_user().login:
+        #     print(f" - {member.login} (You)")
+        # else:
+        print(f" - {member.login}")
 
 def list_out_new_collabs(connection, oc, prev_oc) -> list:
     new_oc = [member for member in oc if member.login not in prev_oc]
