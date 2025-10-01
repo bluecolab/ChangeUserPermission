@@ -161,6 +161,7 @@ def manage_permissions(connection, oc, repos, prev_oc):
     else:
         print("Working on it. This may take a minute.")
         downgrade_permissions(user, notread)
+        print("All done. Check the log file for details.")
     
     # if users is not on the logged list of outside collaborators, ask if they should be added
     if user.login not in prev_oc:
